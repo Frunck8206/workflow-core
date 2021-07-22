@@ -6,9 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WorkflowCore.Interface;
 using WorkflowCore.Models;
-using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-using WorkflowCore.Exceptions;
 using WorkflowCore.Models.LifeCycleEvents;
 
 namespace WorkflowCore.Services
@@ -50,7 +47,6 @@ namespace WorkflowCore.Services
             _searchIndex = searchIndex;
             _activityController = activityController;
             _lifeCycleEventHub = lifeCycleEventHub;
-            _lifeCycleEventHub.Subscribe(HandleLifeCycleEvent);
         }
         
         public Task<string> StartWorkflow(string workflowId, object data = null, string reference=null)
@@ -94,6 +90,10 @@ namespace WorkflowCore.Services
             await _lifeCycleEventHub.Start();
             await _searchIndex.Start();
             
+            // Event subscriptions are removed when stopping the event hub.
+            // Add them when starting.
+            AddEventSubscriptions();
+
             Logger.LogInformation("Starting background tasks");
 
             foreach (var task in _backgroundTasks)
@@ -183,6 +183,11 @@ namespace WorkflowCore.Services
         public Task SubmitActivityFailure(string token, object result)
         {
             return _activityController.SubmitActivityFailure(token, result);
+        }
+
+        private void AddEventSubscriptions()
+        {
+            _lifeCycleEventHub.Subscribe(HandleLifeCycleEvent);
         }
     }
 }
